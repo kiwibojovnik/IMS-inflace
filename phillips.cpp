@@ -31,12 +31,18 @@ std::vector<std::string> split_by_delimiter(std::string str, char delim)
     return str_vector;
 }
 
+/*
+ *   Returns squared double value
+ */
 
 inline static double sqr(double x) {
     return x * x;
 }
 
-// TODO: check if correct csv
+/*
+ *   Parses file and loads values to arrays
+ */
+
 void parse_csv(std::string file, std::vector<std::string>& quarters, std::vector<double>& inflation, std::vector<double>& unemployment) 
 {
     std::ifstream data(file, std::ifstream::in);
@@ -44,6 +50,7 @@ void parse_csv(std::string file, std::vector<std::string>& quarters, std::vector
     std::vector<std::string> cells;
     // ignore header
     std::getline(data, line);
+    // TODO: check if correct csv
 
     while(std::getline(data, line)) {
         cells = split_by_delimiter(line, ';');
@@ -54,63 +61,65 @@ void parse_csv(std::string file, std::vector<std::string>& quarters, std::vector
     }
 };
 
-// https://www.geeksforgeeks.org/system-linear-equations-three-variables-using-cramers-rule/
-// finds the determinant of 3x3 atrix
+/*
+ *   Finds and returns determinant of 3x3 matrix
+ */
+
 double determinant(double mat[3][3])
 {
-    double ans;
-    ans = mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
+    double det;
+    det = mat[0][0] * (mat[1][1] * mat[2][2] - mat[2][1] * mat[1][2])
           - mat[0][1] * (mat[1][0] * mat[2][2] - mat[1][2] * mat[2][0])
           + mat[0][2] * (mat[1][0] * mat[2][1] - mat[1][1] * mat[2][0]);
-    return ans;
+    return det;
 }
 
-// finds the solution of system of linear equations using cramer's rule
-void cramer(double coeff[3][4], double& a, double& b, double& c)
+/*
+ *   Finds the solution of system of 3 linear equations using cramer's rule
+ */
+
+void cramer(double quad[3][4], double& a, double& b, double& c)
 {
     double d[3][3] = {
-        { coeff[0][0], coeff[0][1], coeff[0][2] },
-        { coeff[1][0], coeff[1][1], coeff[1][2] },
-        { coeff[2][0], coeff[2][1], coeff[2][2] },
+        { quad[0][0], quad[0][1], quad[0][2] },
+        { quad[1][0], quad[1][1], quad[1][2] },
+        { quad[2][0], quad[2][1], quad[2][2] },
     };
     
     double d1[3][3] = {
-        { coeff[0][3], coeff[0][1], coeff[0][2] },
-        { coeff[1][3], coeff[1][1], coeff[1][2] },
-        { coeff[2][3], coeff[2][1], coeff[2][2] },
+        { quad[0][3], quad[0][1], quad[0][2] },
+        { quad[1][3], quad[1][1], quad[1][2] },
+        { quad[2][3], quad[2][1], quad[2][2] },
     };
     
     double d2[3][3] = {
-        { coeff[0][0], coeff[0][3], coeff[0][2] },
-        { coeff[1][0], coeff[1][3], coeff[1][2] },
-        { coeff[2][0], coeff[2][3], coeff[2][2] },
+        { quad[0][0], quad[0][3], quad[0][2] },
+        { quad[1][0], quad[1][3], quad[1][2] },
+        { quad[2][0], quad[2][3], quad[2][2] },
     };
     
     double d3[3][3] = {
-        { coeff[0][0], coeff[0][1], coeff[0][3] },
-        { coeff[1][0], coeff[1][1], coeff[1][3] },
-        { coeff[2][0], coeff[2][1], coeff[2][3] },
+        { quad[0][0], quad[0][1], quad[0][3] },
+        { quad[1][0], quad[1][1], quad[1][3] },
+        { quad[2][0], quad[2][1], quad[2][3] },
     };
  
-    double D = determinant(d);
-    double D1 = determinant(d1);
-    double D2 = determinant(d2);
-    double D3 = determinant(d3);
+    double det = determinant(d);
+    double det1 = determinant(d1);
+    double det2 = determinant(d2);
+    double det3 = determinant(d3);
 
-    if (D != 0) {
-        // coeff have a unique solution, apply Cramer's Rule
-        a = D1 / D;
-        b = D2 / D;
-        c = D3 / D; 
-    } else {
-        if (D1 == 0 && D2 == 0 && D3 == 0) {
-            // infinite solutions
-        } else if (D1 != 0 || D2 != 0 || D3 != 0) {
-            // no solution
-        }
-    }
+    // apply Cramer's Rule
+    a = det1 / det;
+    b = det2 / det;
+    c = det3 / det; 
 }
 
+/*
+ *   Finds quadratic regression function of points in x and y arrays
+ *   Sets values of coefficientss a, b, c and coefficients of determination r
+ *   
+ */
 
 int quad_reg(const std::vector<double> x, const std::vector<double> y, double& c, double& b, double& a, double& r)
 {
@@ -124,8 +133,10 @@ int quad_reg(const std::vector<double> x, const std::vector<double> y, double& c
     double sum_x2y = 0.0;
     double sum_y = 0.0;
     double sum_y2 = 0.0;
+    double ssr = 0.0;
+    double sst = 0.0;
 
-    for (int i=0;i<n;i++){ 
+    for (int i = 0; i < n; i++) { 
         sum_x  += x[i];       
         sum_x2 += sqr(x[i]);  
         sum_x3 += x[i] * sqr(x[i]);  
@@ -136,21 +147,30 @@ int quad_reg(const std::vector<double> x, const std::vector<double> y, double& c
         sum_y2 += sqr(y[i]); 
     } 
 
-    double coeff[3][4] = {
+    double quad[3][4] = {
         { (double)n, sum_x, sum_x2, sum_y },
         { sum_x,    sum_x2, sum_x3, sum_xy },
         { sum_x2,   sum_x3, sum_x4, sum_x2y },
     };
+    
+    cramer(quad, a, b, c);
 
-    r = (sum_xy - sum_x * sum_y / n) / sqrt((sum_x2 - sqr(sum_x)/n) * (sum_y2 - sqr(sum_y)/n));
- 
-    cramer(coeff, a, b, c);
+    for (int i = 0; i < n; i++) { 
+        ssr += sqr(y[i] - (a + b * x[i] + c * sqr(x[i])));
+        sst += sqr(y[i] - (sum_y / n));
+    } 
+    r = 1 - (ssr / sst);
 
     return 0;
 }
 
+/*
+ *   Finds linear regression function of points in x and y arrays
+ *   Sets values of coefficients a, b and coefficients of determination r
+ *   
+ */
 
-int lin_reg(const std::vector<double> x, const std::vector<double> y, double& m, double& b, double& r)
+int lin_reg(const std::vector<double> x, const std::vector<double> y, double& a, double& b, double& r)
 {
     int n = x.size();
 
@@ -172,18 +192,23 @@ int lin_reg(const std::vector<double> x, const std::vector<double> y, double& m,
 
     if (denom == 0) {
         // singular matrix
-        m = 0;
+        a = 0;
         b = 0;
         r = 0;
         return 1;
     }
 
-    m = (n * sum_xy  -  sum_x * sum_y) / denom;
+    a = (n * sum_xy  -  sum_x * sum_y) / denom;
     b = (sum_y * sum_x2  -  sum_x * sum_xy) / denom;
     r = (sum_xy - sum_x * sum_y / n) / sqrt((sum_x2 - sqr(sum_x)/n) * (sum_y2 - sqr(sum_y)/n));
 
     return 0; 
 }
+
+/*
+ *   Finds phillips curves and generates script for gnuplot
+ *   
+ */
 
 void generate_graphics(const std::string input, const std::vector<double> inflation, const std::vector<double> unemployment)
 {
@@ -200,16 +225,15 @@ void generate_graphics(const std::string input, const std::vector<double> inflat
 
     lin_reg(unemployment, inflation, a, b, r);
     std::cout  << std::endl << "Linear regression:" << std::endl;
-    std::cout << " y = (" << a << ")x + (" << b << ")" << std::endl << std::endl;
+    std::cout << " y = (" << a << ")x + (" << b << ")" << std::endl;
+    std::cout << " r^2: " << sqr(r) << std::endl << std::endl << std::endl;
     output << "f(x) = (" << a << ") * x + (" << b << ")" << std::endl;
 
     quad_reg(unemployment, inflation, a, b, c, r);
     std::cout << "Quadratic regression:" << std::endl;
-    std::cout << " y = (" << a << ")x^2 + (" << b << ")x + (" << c  << ")" << std::endl << std::endl;
+    std::cout << " y = (" << a << ")x^2 + (" << b << ")x + (" << c  << ")" << std::endl;
+    std::cout << " r^2: " << r << std::endl << std::endl;
     output << "g(x) = (" << a << ") * x * x + (" << b << ") * x + (" << c << ")" << std::endl;
-
-    std::cout << "Coefficient of determination:" << std::endl;
-    std::cout << " r^2: " << sqr(r) << std::endl << std::endl;
 
     std::cout << "Script output.plt was created." << std::endl << "Run 'gnuplot output.plt' to generate graphics." << std::endl << std::endl;
 
@@ -227,17 +251,25 @@ void generate_graphics(const std::string input, const std::vector<double> inflat
     return;
 }
 
+/*
+ *   Checks arguments
+ *   
+ */
+
 int main(int argc, char *argv[])
 {
     std::vector<std::string> quarters;
     std::vector<double> inflation, unemployment;
 
-    // TODO: check args
+    if (argc != 2) {
+        std::cout << "Error: invalid arguments" << std::endl << std::endl << "Program accepts exactly 1 argument (input csv file)." << std::endl;
+        return EXIT_FAILURE;
+    }
 
     parse_csv(argv[1], quarters, inflation, unemployment);
 
     generate_graphics(argv[1], inflation, unemployment);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 

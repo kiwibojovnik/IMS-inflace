@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -std=c++17
 
-TARGET = simulace
+TARGET = phillips
 
 all: $(TARGET)
 
